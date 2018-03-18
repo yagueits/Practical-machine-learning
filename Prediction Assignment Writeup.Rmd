@@ -1,0 +1,133 @@
+
+---
+title: 'Machine Learning. Peer-Graded Assignment: Prediction Assignment Writeup'
+author: "Santiago Peña"
+date: "11 de marzo de 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(rattle)
+library(corrplot)
+library(knitr)
+```
+
+## Introduction
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. 
+
+The goal of this report is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har)
+
+The goal of this project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. 
+
+## Loading data
+
+The training set and data set are downloaded from urls included:
+
+[Trainig set](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)
+
+[Testing set](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)
+
+
+```{r pressure, echo=FALSE, cache=TRUE}
+url1<-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+training<-read.csv(url1)
+url2<-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+testing<-read.csv(url2)
+# str(training)
+# str(testing)
+rm(url1,url2)
+```
+
+## Data slicing and cleaning. 
+
+Since the so called "testing set" will be used as a validation set to check the final model, depending on the model used it could be requiered so split the training set into a testing set and a training set for cross-validation. 
+That could be done by splitting the training set into a testing set and a training set partition of 25% and 75% respectively with the **createDataPartition** command. 
+Crossvalidation will be done with the **TrainControl** function using a 4-fold validation method, so no further splitting is performed in the training set here.
+
+Once the data set is splitted into a training and testing set, in order to pick the variables that correctly explain the model we firsty remove those variables that have a negligible variability in them with the **nearZeroVar** command. 
+The features of variables with low variability are:
+
+
+```{r, cache=TRUE}
+names(training[,nearZeroVar(training)])
+training2<-training[,-nearZeroVar(training)]
+testing2<-testing[,-nearZeroVar(training)]
+rm(training,testing)
+```
+
+Many other variables are useless since they have NA values. Those values are also removed from the test
+
+```{r, cache=TRUE}
+RemNA<-sapply(training2, function (x) any(is.na(x))) 
+training3<-training2[, -which(RemNA)] 
+testing3<-testing2[,-which(RemNA)]
+rm(RemNA,training2,testing2)
+```
+
+Some other identification variables (first 5 columns) are also removed
+
+```{r, cache=TRUE}
+training3<-training3[,-c(1:6)]
+testing3<-testing3[,-c(1:6)]
+```
+
+
+## Processing and Modelling
+
+### Random forests
+
+Within the random forests models, multiple models are developed, and the results are aggregated to improve classification rates. The algorithm involves sampling cases and variables to create a large number of deccision trees. It is a very accurate model, although it is computanionally costly.
+
+To cross validate the model, it has been used the **TrainControl** function with a 4 fold validation and allowing parallel processing to improving computational efficiency. Unfortunately I had to reduce the training set size due to my computer processing limitations. 
+
+```{r, cache=TRUE}
+set.seed(31415)
+ex<-trainControl(method="cv",number=3,allowParallel=TRUE,verboseIter=TRUE)
+n<-sample(1:dim(training3)[1],11000,replace = F)
+muestra<-training3[n,]
+modFitRF<-train(classe ~ ., method="rf", data=muestra, prox=TRUE,trControl=ex) 
+modFitRF$finalModel 
+``` 
+
+showing a very good approach approach:
+
+```{r, cache=TRUE}
+Prediction<-predict(modFitRF,training3)
+table(Prediction,training3$classe)
+
+
+```
+
+It can be checked also with the remaining sample:
+```{r}
+
+Borrar<-training3[-n,]
+Aver<-predict(modFitRF,Borrar)
+table(Aver,Borrar$classe)
+
+confusionMatrix(Aver,Borrar$classe) 
+```
+
+
+
+
+## SUMMARY AND RESULTS
+
+From the model above, the resulting prediction results as follows:
+
+```{r, cache=TRUE}
+Borrar<-predict(modFitRF, newdata = testing3) 
+Number_Files = length(Borrar)
+    for (i in 1:Number_Files){
+        filename =  paste0("problem_id",i,".txt")
+        write.table(Borrar[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+    }
+    Borrar
+```
+
+
+
+
