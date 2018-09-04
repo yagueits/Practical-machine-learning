@@ -1,7 +1,7 @@
 
 ---
 title: 'Machine Learning. Peer-Graded Assignment: Prediction Assignment Writeup'
-author: "Santiago Peña"
+author: "Santiago PeÃ±a"
 date: "18 de marzo de 2018"
 output: html_document
 ---
@@ -38,6 +38,7 @@ url2<-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
 testing<-read.csv(url2)
 # str(training)
 # str(testing)
+#Remove only if needed due to memory limitations
 rm(url1,url2)
 ```
 
@@ -55,6 +56,7 @@ The features of variables with low variability are:
 names(training[,nearZeroVar(training)])
 training2<-training[,-nearZeroVar(training)]
 testing2<-testing[,-nearZeroVar(training)]
+#Remove only if needed due to memory limitations
 rm(training,testing)
 ```
 
@@ -64,6 +66,7 @@ Many other variables are useless since they have NA values. Those values are als
 RemNA<-sapply(training2, function (x) any(is.na(x))) 
 training3<-training2[, -which(RemNA)] 
 testing3<-testing2[,-which(RemNA)]
+#Remove only if needed due to memory limitations
 rm(RemNA,training2,testing2)
 ```
 
